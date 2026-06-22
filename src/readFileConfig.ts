@@ -6,7 +6,10 @@ export function readFileConfig(dir: string): Partial<HwtrackConfig> {
   const candidates = [path.join(dir, "hwtrack.config.json")]
   for (const p of candidates) {
     try {
-      return JSON.parse(fs.readFileSync(p, "utf8")) as Partial<HwtrackConfig>
+      const parsed = JSON.parse(fs.readFileSync(p, "utf8"))
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Partial<HwtrackConfig>
+      }
     } catch {
       /* try next */
     }

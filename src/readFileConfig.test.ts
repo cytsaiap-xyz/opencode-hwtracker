@@ -19,3 +19,12 @@ test("returns empty object when file missing or invalid", async () => {
   expect(readFileConfig(dir)).toEqual({})
   await fs.rm(dir, { recursive: true, force: true })
 })
+
+test("rejects non-object JSON (scalar and array)", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "hwtrack-cfg-"))
+  await fs.writeFile(path.join(dir, "hwtrack.config.json"), "42")
+  expect(readFileConfig(dir)).toEqual({})
+  await fs.writeFile(path.join(dir, "hwtrack.config.json"), "[1,2]")
+  expect(readFileConfig(dir)).toEqual({})
+  await fs.rm(dir, { recursive: true, force: true })
+})

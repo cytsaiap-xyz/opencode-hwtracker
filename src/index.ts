@@ -65,7 +65,7 @@ export const HwtrackPlugin: Plugin = async ({ client, directory }) => {
               const tokens = (msg.tokens ?? {}) as { output?: number }
               const outTok = typeof tokens.output === "number" ? tokens.output : null
               const dur =
-                time.created && time.completed ? (time.completed - time.created) / 1000 : null
+                time.created != null && time.completed != null ? (time.completed - time.created) / 1000 : null
               detector.onTurnComplete(turnId, outTok, dur)
             }
           }
