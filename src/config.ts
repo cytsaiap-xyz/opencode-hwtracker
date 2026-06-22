@@ -42,7 +42,7 @@ export function loadConfig(
   for (const key of NUM_KEYS) {
     const raw = env[toEnvKey(key)]
     if (raw !== undefined && raw !== "" && !Number.isNaN(Number(raw))) {
-      ;(merged as Record<string, unknown>)[key] = Number(raw)
+      ;(merged as unknown as Record<string, unknown>)[key] = Number(raw)
     }
   }
 
