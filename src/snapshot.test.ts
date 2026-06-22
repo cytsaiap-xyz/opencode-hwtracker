@@ -65,6 +65,11 @@ test("net ok=false when probe fails", async () => {
   expect(s.net).toEqual({ endpoint: "10.0.0.5:8000", tcpConnectMs: null, ok: false })
 })
 
+test("net ok=false when probe throws", async () => {
+  const s = await collectSnapshot(cfg, "/", deps({ tcpProbe: async () => { throw new Error("boom") } }))
+  expect(s.net).toEqual({ endpoint: "10.0.0.5:8000", tcpConnectMs: null, ok: false })
+})
+
 test("collects disk free + used pct", async () => {
   const s = await collectSnapshot(cfg, "/", deps())
   expect(s.disk!.usedPct).toBe(40)

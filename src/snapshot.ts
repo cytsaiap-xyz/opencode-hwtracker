@@ -56,14 +56,15 @@ function cpuTimes(cpus: os.CpuInfo[]): { idle: number; total: number } {
 
 async function collectCpu(d: SnapshotDeps): Promise<CpuInfo | null> {
   try {
-    const a = cpuTimes(d.cpus())
+    const first = d.cpus()
+    const a = cpuTimes(first)
     await d.sleep(200)
     const b = cpuTimes(d.cpus())
     const idleD = b.idle - a.idle
     const totalD = b.total - a.total
     const usagePct = totalD > 0 ? (1 - idleD / totalD) * 100 : 0
     const [load1, load5, load15] = d.loadavg()
-    return { usagePct, load1, load5, load15, cores: d.cpus().length }
+    return { usagePct, load1, load5, load15, cores: first.length }
   } catch {
     return null
   }
@@ -98,6 +99,10 @@ async function collectMem(d: SnapshotDeps): Promise<MemInfo | null> {
   }
 }
 
+function shellQuote(s: string): string {
+  return "'" + s.replace(/'/g, "'\\''") + "'"
+}
+
 function parseEndpoint(ep: string): { host: string; port: number } | null {
   try {
     const s = ep.includes("://") ? ep : "tcp://" + ep
@@ -115,8 +120,14 @@ async function collectNet(d: SnapshotDeps, config: HwtrackConfig): Promise<NetIn
     if (!config.vllmEndpoint) return null
     const parsed = parseEndpoint(config.vllmEndpoint)
     if (!parsed) return null
-    const ms = await d.tcpProbe(parsed.host, parsed.port, config.netTimeoutMs)
-    return { endpoint: `${parsed.host}:${parsed.port}`, tcpConnectMs: ms, ok: ms !== null }
+    const endpoint = `${parsed.host}:${parsed.port}`
+    let ms: number | null = null
+    try {
+      ms = await d.tcpProbe(parsed.host, parsed.port, config.netTimeoutMs)
+    } catch {
+      ms = null
+    }
+    return { endpoint, tcpConnectMs: ms, ok: ms !== null }
   } catch {
     return null
   }
@@ -124,7 +135,7 @@ async function collectNet(d: SnapshotDeps, config: HwtrackConfig): Promise<NetIn
 
 async function collectDisk(d: SnapshotDeps, cwd: string): Promise<DiskInfo | null> {
   try {
-    const out = await d.sh(`df -k ${JSON.stringify(cwd)}`)
+    const out = await d.sh(`df -k ${shellQuote(cwd)}`)
     const lines = out.trim().split("\n")
     const last = lines[lines.length - 1].trim().split(/\s+/)
     const availKB = Number(last[3])
