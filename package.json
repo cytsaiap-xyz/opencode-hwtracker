@@ -1,0 +1,13 @@
+{
+  "name": "opencode-hwtrack",
+  "version": "0.1.0",
+  "description": "opencode plugin: records local server hardware when model output is slow",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "test": "bun test", "typecheck": "tsc --noEmit" },
+  "devDependencies": {
+    "@opencode-ai/plugin": "latest",
+    "typescript": "^5.5.0",
+    "@types/node": "^20.0.0"
+  }
+}
