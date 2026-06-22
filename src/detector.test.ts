@@ -101,3 +101,21 @@ test("concurrent turns are tracked independently", () => {
   expect(h.fired.length).toBe(1)
   expect(h.fired[0].sessionId).toBe("s2")
 })
+
+test("durationSec null falls back to wall-clock duration", () => {
+  const h = harness()
+  h.detector.onTurnStart("m1", "s1")
+  h.advance(1000) // 1 second wall-clock
+  h.detector.onToken("m1", 20)
+  h.detector.onTurnComplete("m1", 5, null) // 5 tokens, null duration → use 1 sec = 5 tokps < 10
+  expect(h.fired.length).toBe(1)
+  expect(h.fired[0].type).toBe("tokps")
+  expect(h.fired[0].tokensPerSec).toBeCloseTo(5)
+})
+
+test("durationSec zero or negative is guarded and fires nothing", () => {
+  const h = harness()
+  h.detector.onTurnStart("m1", "s1")
+  h.detector.onTurnComplete("m1", 1, 0) // 0 duration guard
+  expect(h.fired.length).toBe(0)
+})

@@ -37,6 +37,8 @@ export function createDetector(opts: DetectorOptions) {
   function onToken(turnId: string, charCount: number): void {
     const st = turns.get(turnId)
     if (!st) return
+    // charCount is the CUMULATIVE character count of assistant text so far (running total, not per-chunk delta).
+    // Caller passes part.text.length; detector stores it as-is for token estimation.
     st.lastCharCount = charCount
     if (st.firstTokenAt === null) {
       st.firstTokenAt = now()
