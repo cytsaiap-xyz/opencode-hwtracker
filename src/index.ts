@@ -8,6 +8,8 @@ import { appendEvent } from "./logger"
 import { formatWarning, showWarning } from "./warning"
 import type { HwEvent, Trigger } from "./types"
 
+let sessionIdMissingWarned = false
+
 export const HwtrackPlugin: Plugin = async ({ client, directory }) => {
   const cwd = directory ?? process.cwd()
   const config = loadConfig(process.env as Record<string, string | undefined>, readFileConfig(cwd))
@@ -58,6 +60,10 @@ export const HwtrackPlugin: Plugin = async ({ client, directory }) => {
           if (msg?.role === "assistant" && typeof msg.id === "string") {
             const turnId = msg.id
             const sessionId = (msg.sessionID ?? msg.sessionId ?? "unknown") as string
+            if (sessionId === "unknown" && !sessionIdMissingWarned) {
+              sessionIdMissingWarned = true
+              console.error("[hwtrack] could not read session id from message.updated payload — event bindings may need adjustment (see README verify step)")
+            }
             const time = (msg.time ?? {}) as { created?: number; completed?: number }
             if (!time.completed) {
               detector.onTurnStart(turnId, sessionId)

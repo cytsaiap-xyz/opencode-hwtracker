@@ -21,7 +21,7 @@ An [opencode](https://opencode.ai) plugin that records local server hardware met
 
 ### Why no GPU metrics?
 
-Collecting live GPU utilisation requires either `nvidia-smi` (NVIDIA-only, subprocess overhead) or a native binding that adds a mandatory dependency. The three-way verdict (LOCAL / NETWORK / BACKEND) is useful without GPU data, and adding it was explicitly out of scope for this release.
+The vLLM inference service runs on a separate, IT-managed GPU server that the opencode client host cannot observe. This plugin deliberately measures only the local opencode server to help you identify whether slowness is **local** (your machine — fixable here) versus **backend or network** (escalate to IT). GPU metrics on the inference server are out of scope.
 
 ### Toast persistence caveat
 
@@ -171,7 +171,7 @@ print(counts)
 ```bash
 bun install
 bun run typecheck   # must pass with 0 errors
-bun test            # 42 tests across 7 suites, all green
+bun test            # 43 tests across 7 suites, all green
 ```
 
-Test files mirror each source module: `config.test.ts` (5), `verdict.test.ts` (7), `detector.test.ts` (7), `snapshot.test.ts` (7), `logger.test.ts` (2), `warning.test.ts` (3), `readFileConfig.test.ts` (2).
+Test files mirror each source module: `config.test.ts` (5), `verdict.test.ts` (7), `detector.test.ts` (9), `snapshot.test.ts` (8), `logger.test.ts` (2), `warning.test.ts` (9), `readFileConfig.test.ts` (3).
