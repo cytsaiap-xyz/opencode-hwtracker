@@ -19,7 +19,7 @@ import type { JSX } from "solid-js"
 import { loadConfig } from "./config"
 import { readFileConfig } from "./readFileConfig"
 import { collectSnapshot } from "./snapshot"
-import { readLastEvent } from "./watch"
+import { readLastEvent } from "./lastEvent"
 import type { Snapshot, HwEvent } from "./types"
 import { HwSidebar } from "./sidebar"
 

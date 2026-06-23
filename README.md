@@ -165,58 +165,6 @@ nothing appears. Remove the overrides when done.
 
 ---
 
-## Live panel (separate terminal — alternative to the sidebar)
-
-The [in-opencode sidebar](#sidebar-inside-opencode-recommended) above is the recommended
-persistent view. This `hwtracker-watch` command is an **alternative** for when you'd
-rather not widen the terminal for opencode's sidebar, or want the readout in its own
-pane/window. Run it in a terminal split beside opencode. It samples
-**CPU / RAM / disk every couple of seconds** and shows the latest slow-output event:
-
-```
-opencode-hwtracker — live local hardware
-2026-06-23T13:33:00.000Z
-
-CPU  [#####---------------]  24%
-load 2.42 (1m) / 8 cores = 0.30/core
-RAM  [#################---]  85%  HIGH  (27.1/32.0 GB)
-Disk [############--------]  58%  (381 GB free)
-
-Last slow-output event:
-  2026-06-23T13:31:10.000Z
-  tokps: 6.1 tok/s -> BACKEND likely
-
-(Ctrl-C to quit)
-```
-
-### Install the watcher (one file)
-
-```bash
-curl -L https://raw.githubusercontent.com/cytsaiap-xyz/opencode-hwtracker/master/dist/hwtracker-watch.js \
-  -o ~/.config/opencode/hwtracker-watch.js
-```
-
-### Run it beside opencode
-
-```bash
-bun ~/.config/opencode/hwtracker-watch.js
-# refresh interval in seconds (default 2):
-HWTRACK_WATCH_INTERVAL=1 bun ~/.config/opencode/hwtracker-watch.js
-```
-
-Side-by-side with tmux (opencode left, live panel right):
-
-```bash
-tmux new-session 'opencode' \; split-window -h 'bun ~/.config/opencode/hwtracker-watch.js' \; select-pane -L
-```
-
-The watcher reads the same `hwtrack.config.json` thresholds (run it from your project
-directory to match) and tails the same `~/.opencode-hwtrack/events.jsonl` the plugin
-writes. It redraws in place and stays up until you press Ctrl-C. A metric is flagged
-`HIGH` when it crosses its threshold (`cpuHighPct` / `loadHighRatio` / `memHighPct`).
-
----
-
 ## Configuration
 
 All fields are optional. Priority order: **env vars > hwtrack.config.json > built-in defaults**.
