@@ -11,7 +11,7 @@ function sampleEvent(): HwEvent {
     sessionId: "ses_abc",
     trigger: "tokps",
     speed: { tokensPerSec: 6.1, estimated: false },
-    snapshot: { cpu: null, mem: null, net: null, disk: null },
+    snapshot: { cpu: null, mem: null, disk: null },
     verdict: { label: "BACKEND likely", reasons: ["local resources nominal"] },
   }
 }

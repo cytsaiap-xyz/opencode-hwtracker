@@ -1,7 +1,7 @@
 import type { HwtrackConfig, Snapshot, Verdict } from "./types"
 
 export function computeVerdict(snapshot: Snapshot, config: HwtrackConfig): Verdict {
-  const { cpu, mem, net } = snapshot
+  const { cpu, mem } = snapshot
   const localReasons: string[] = []
 
   if (cpu && cpu.usagePct >= config.cpuHighPct) {
@@ -17,16 +17,5 @@ export function computeVerdict(snapshot: Snapshot, config: HwtrackConfig): Verdi
     return { label: "LOCAL likely", reasons: localReasons }
   }
 
-  if (net && net.ok === false) {
-    return { label: "NETWORK likely", reasons: ["vllm probe failed"] }
-  }
-  if (net && net.tcpConnectMs !== null && net.tcpConnectMs >= config.netHighMs) {
-    return { label: "NETWORK likely", reasons: [`net ${net.tcpConnectMs.toFixed(0)}ms ≥ ${config.netHighMs}ms`] }
-  }
-
-  const reasons = ["local resources nominal"]
-  if (net && net.tcpConnectMs !== null) {
-    reasons.push(`net ${net.tcpConnectMs.toFixed(0)}ms < ${config.netHighMs}ms`)
-  }
-  return { label: "BACKEND likely", reasons }
+  return { label: "BACKEND likely", reasons: ["local resources nominal"] }
 }

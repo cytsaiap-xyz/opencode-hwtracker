@@ -1,6 +1,6 @@
 # opencode-hwtracker
 
-An [opencode](https://opencode.ai) plugin that records local server hardware metrics whenever the model output is unexpectedly slow, then surfaces a verdict explaining whether the bottleneck is likely **LOCAL** (CPU/RAM on the inference box), **NETWORK** (latency to the vLLM endpoint), or **BACKEND** (the vLLM process itself is saturated/underprovisioned).
+An [opencode](https://opencode.ai) plugin that records local server hardware metrics whenever the model output is unexpectedly slow, then surfaces a verdict explaining whether the bottleneck is likely **LOCAL** (CPU/RAM/load on your opencode machine) or **BACKEND** (local hardware looks fine — the slowness is the remote vLLM service or the network to it, which is IT's domain).
 
 ## What it does
 
@@ -8,12 +8,11 @@ An [opencode](https://opencode.ai) plugin that records local server hardware met
    - **TTFT** (time-to-first-token): fires if no token arrives within `ttftThresholdMs` (default 5 s).
    - **tok/s** (token throughput): fires at turn completion if throughput is below `minTokensPerSec` (default 10).
 
-2. **Takes a hardware snapshot** on trigger (CPU usage %, load averages, RAM/swap, TCP connect latency to the vLLM endpoint, disk utilisation).
+2. **Takes a hardware snapshot** on trigger (CPU usage %, load averages, RAM/swap, disk utilisation).
 
 3. **Computes a verdict** based on which thresholds are crossed:
-   - `LOCAL likely` — CPU or memory is saturated.
-   - `NETWORK likely` — TCP connect to the endpoint is slow.
-   - `BACKEND likely` — hardware looks fine; the bottleneck is inside vLLM.
+   - `LOCAL likely` — CPU, load, or memory on the local machine is saturated → fix locally.
+   - `BACKEND likely` — local hardware looks fine → the bottleneck is the remote vLLM service or the network to it (IT's domain).
 
 4. **Logs a JSONL event** to `~/.opencode-hwtrack/events.jsonl` (configurable).
 
@@ -73,7 +72,7 @@ cp dist/opencode-hwtracker.js ~/.config/opencode/plugins/
 Restart opencode. On startup the plugin prints a one-line diagnostic to **stderr**:
 
 ```
-[hwtrack] loaded — cwd=/your/project minTokensPerSec=10 ttftThresholdMs=5000 vllmEndpoint=unset logPath=/Users/you/.opencode-hwtrack/events.jsonl
+[hwtrack] loaded — cwd=/your/project minTokensPerSec=10 ttftThresholdMs=5000 logPath=/Users/you/.opencode-hwtrack/events.jsonl
 ```
 
 **If you see that line, the plugin loaded** — and it shows the exact config it
@@ -88,21 +87,18 @@ it, the file isn't in the plugins directory (or opencode wasn't restarted).
 rm ~/.config/opencode/plugins/opencode-hwtracker.js
 ```
 
-### Configure the endpoint
+### Configure (optional)
 
-Copy `hwtrack.config.example.json` to `hwtrack.config.json` in your project root
-(or wherever opencode is launched from) and set `vllmEndpoint` to your inference
-server's `host:port`:
+All settings are optional — the plugin works out of the box with defaults. To tune thresholds, copy `hwtrack.config.example.json` to `hwtrack.config.json` in your project root (where you launch opencode), e.g.:
 
 ```json
 {
-  "vllmEndpoint": "10.0.0.5:8000",
-  "minTokensPerSec": 10
+  "minTokensPerSec": 10,
+  "ttftThresholdMs": 5000
 }
 ```
 
-Alternatively, set everything via environment variables (see the
-[Configuration](#configuration) table) — e.g. `HWTRACK_VLLM_ENDPOINT=10.0.0.5:8000`.
+Or use environment variables (see the [Configuration](#configuration) table) — e.g. `HWTRACK_MIN_TOKENS_PER_SEC=15`. There is no endpoint to configure: the plugin only reads local hardware.
 
 ### Force a trigger (smoke test)
 
@@ -113,8 +109,8 @@ huge throughput threshold, and watch the log:
 # terminal A — watch the log
 touch ~/.opencode-hwtrack/events.jsonl && tail -f ~/.opencode-hwtrack/events.jsonl
 
-# terminal B — launch with a forced trigger, debug tracing, and your endpoint
-HWTRACK_DEBUG=1 HWTRACK_MIN_TOKENS_PER_SEC=100000 HWTRACK_VLLM_ENDPOINT=10.0.0.5:8000 opencode
+# terminal B — launch with a forced trigger and debug tracing
+HWTRACK_DEBUG=1 HWTRACK_MIN_TOKENS_PER_SEC=100000 opencode
 ```
 
 Send any prompt. You should see a bottom-right toast **and** a new JSON line in
@@ -135,14 +131,11 @@ All fields are optional. Priority order: **env vars > hwtrack.config.json > buil
 
 | Key | Env var | Default | Description |
 |-----|---------|---------|-------------|
-| `vllmEndpoint` | `HWTRACK_VLLM_ENDPOINT` | `null` | `host:port` of your vLLM server (used for TCP ping). |
 | `minTokensPerSec` | `HWTRACK_MIN_TOKENS_PER_SEC` | `10` | Throughput below this triggers a snapshot. |
 | `ttftThresholdMs` | `HWTRACK_TTFT_THRESHOLD_MS` | `5000` | TTFT above this triggers a snapshot (ms). |
 | `cpuHighPct` | `HWTRACK_CPU_HIGH_PCT` | `85` | CPU usage % considered "high". |
 | `loadHighRatio` | `HWTRACK_LOAD_HIGH_RATIO` | `1.0` | load1 / core count ratio considered "high". |
 | `memHighPct` | `HWTRACK_MEM_HIGH_PCT` | `90` | RAM used % considered "high". |
-| `netHighMs` | `HWTRACK_NET_HIGH_MS` | `200` | TCP connect latency (ms) considered "high". |
-| `netTimeoutMs` | `HWTRACK_NET_TIMEOUT_MS` | `2000` | TCP connect timeout (ms). |
 | `logPath` | `HWTRACK_LOG_PATH` | `~/.opencode-hwtrack/events.jsonl` | Path to append JSONL events. `~` is expanded. |
 
 ---
@@ -176,11 +169,6 @@ Each line in `events.jsonl` is a JSON object:
       "usedPct": 88.5,
       "swapUsedMB": 512
     },
-    "net": {
-      "endpoint": "10.0.0.5:8000",
-      "tcpConnectMs": 42,
-      "ok": true
-    },
     "disk": {
       "path": "/",
       "freeGB": 18.4,
@@ -194,7 +182,7 @@ Each line in `events.jsonl` is a JSON object:
 }
 ```
 
-Fields `cpu`, `mem`, `net`, `disk` inside `snapshot` may be `null` if the collector failed or the endpoint is unconfigured.
+Fields `cpu`, `mem`, `disk` inside `snapshot` may be `null` if that collector failed.
 
 ### Reading the log
 
@@ -220,9 +208,9 @@ print(counts)
 > This checklist corresponds to the manual integration test (brief Step 7) that requires a live opencode + vLLM session. Run it after installing the plugin.
 
 1. **Link the plugin** (global or per-project, see Install section above).
-2. **Create `hwtrack.config.json`** in the project root:
+2. **Create `hwtrack.config.json`** in the project root (optional):
    ```json
-   { "vllmEndpoint": "<your-vllm-host>:<port>", "minTokensPerSec": 10, "ttftThresholdMs": 5000 }
+   { "minTokensPerSec": 10, "ttftThresholdMs": 5000 }
    ```
 3. **Start opencode** and run a normal prompt. Confirm **no** warning toast and **no** new JSONL line (turn was fast).
 4. **Force a slow turn**: temporarily set `minTokensPerSec` very high (e.g. `100000`) so any turn triggers. Run a prompt.

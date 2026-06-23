@@ -1,13 +1,10 @@
 export interface HwtrackConfig {
   minTokensPerSec: number
   ttftThresholdMs: number
-  vllmEndpoint: string | null
   logPath: string
   cpuHighPct: number
   loadHighRatio: number
   memHighPct: number
-  netHighMs: number
-  netTimeoutMs: number
 }
 
 export interface CpuInfo {
@@ -26,12 +23,6 @@ export interface MemInfo {
   swapUsedMB: number | null
 }
 
-export interface NetInfo {
-  endpoint: string
-  tcpConnectMs: number | null
-  ok: boolean
-}
-
 export interface DiskInfo {
   path: string
   freeGB: number
@@ -41,11 +32,10 @@ export interface DiskInfo {
 export interface Snapshot {
   cpu: CpuInfo | null
   mem: MemInfo | null
-  net: NetInfo | null
   disk: DiskInfo | null
 }
 
-export type VerdictLabel = "LOCAL likely" | "NETWORK likely" | "BACKEND likely"
+export type VerdictLabel = "LOCAL likely" | "BACKEND likely"
 
 export interface Verdict {
   label: VerdictLabel

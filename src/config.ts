@@ -5,13 +5,10 @@ import type { HwtrackConfig } from "./types"
 export const DEFAULTS: HwtrackConfig = {
   minTokensPerSec: 10,
   ttftThresholdMs: 5000,
-  vllmEndpoint: null,
   logPath: "~/.opencode-hwtrack/events.jsonl",
   cpuHighPct: 85,
   loadHighRatio: 1.0,
   memHighPct: 90,
-  netHighMs: 200,
-  netTimeoutMs: 2000,
 }
 
 const NUM_KEYS = [
@@ -20,8 +17,6 @@ const NUM_KEYS = [
   "cpuHighPct",
   "loadHighRatio",
   "memHighPct",
-  "netHighMs",
-  "netTimeoutMs",
 ] as const
 
 function toEnvKey(key: string): string {
@@ -45,9 +40,6 @@ export function loadConfig(
       ;(merged as unknown as Record<string, unknown>)[key] = Number(raw)
     }
   }
-
-  const endpoint = env["HWTRACK_VLLM_ENDPOINT"] ?? fileConfig.vllmEndpoint ?? DEFAULTS.vllmEndpoint
-  merged.vllmEndpoint = endpoint ?? null
 
   const lp = env["HWTRACK_LOG_PATH"] ?? merged.logPath
   merged.logPath = expandHome(lp)

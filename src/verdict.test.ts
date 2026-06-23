@@ -9,7 +9,6 @@ function snap(over: Partial<Snapshot>): Snapshot {
   return {
     cpu: { usagePct: 10, load1: 0.5, load5: 0.5, load15: 0.5, cores: 8 },
     mem: { totalMB: 16000, usedMB: 4000, freeMB: 12000, usedPct: 25, swapUsedMB: 0 },
-    net: { endpoint: "h:8000", tcpConnectMs: 5, ok: true },
     disk: { path: "/", freeGB: 100, usedPct: 40 },
     ...over,
   }
@@ -31,22 +30,12 @@ test("high mem => LOCAL likely", () => {
   expect(v.label).toBe("LOCAL likely")
 })
 
-test("local nominal + net probe failed => NETWORK likely", () => {
-  const v = computeVerdict(snap({ net: { endpoint: "h:8000", tcpConnectMs: null, ok: false } }), cfg)
-  expect(v.label).toBe("NETWORK likely")
-})
-
-test("local nominal + high latency => NETWORK likely", () => {
-  const v = computeVerdict(snap({ net: { endpoint: "h:8000", tcpConnectMs: 350, ok: true } }), cfg)
-  expect(v.label).toBe("NETWORK likely")
-})
-
 test("everything nominal => BACKEND likely", () => {
   const v = computeVerdict(snap({}), cfg)
   expect(v.label).toBe("BACKEND likely")
 })
 
-test("nominal local with no net info => BACKEND likely (won't claim NETWORK)", () => {
-  const v = computeVerdict(snap({ net: null }), cfg)
+test("nominal local with no cpu/mem => BACKEND likely", () => {
+  const v = computeVerdict(snap({ cpu: null, mem: null }), cfg)
   expect(v.label).toBe("BACKEND likely")
 })

@@ -5,22 +5,17 @@ import path from "path";
 var DEFAULTS = {
   minTokensPerSec: 10,
   ttftThresholdMs: 5000,
-  vllmEndpoint: null,
   logPath: "~/.opencode-hwtrack/events.jsonl",
   cpuHighPct: 85,
   loadHighRatio: 1,
-  memHighPct: 90,
-  netHighMs: 200,
-  netTimeoutMs: 2000
+  memHighPct: 90
 };
 var NUM_KEYS = [
   "minTokensPerSec",
   "ttftThresholdMs",
   "cpuHighPct",
   "loadHighRatio",
-  "memHighPct",
-  "netHighMs",
-  "netTimeoutMs"
+  "memHighPct"
 ];
 function toEnvKey(key) {
   return "HWTRACK_" + key.replace(/[A-Z]/g, (m) => "_" + m).toUpperCase();
@@ -38,8 +33,6 @@ function loadConfig(env = {}, fileConfig = {}) {
       merged[key] = Number(raw);
     }
   }
-  const endpoint = env["HWTRACK_VLLM_ENDPOINT"] ?? fileConfig.vllmEndpoint ?? DEFAULTS.vllmEndpoint;
-  merged.vllmEndpoint = endpoint ?? null;
   const lp = env["HWTRACK_LOG_PATH"] ?? merged.logPath;
   merged.logPath = expandHome(lp);
   return merged;
@@ -122,27 +115,7 @@ function createDetector(opts) {
 
 // src/snapshot.ts
 import os2 from "os";
-import net from "net";
 var {$ } = globalThis.Bun;
-function tcpProbe(host, port, timeoutMs) {
-  return new Promise((resolve) => {
-    const start = Date.now();
-    const sock = new net.Socket;
-    let done = false;
-    const finish = (v) => {
-      if (done)
-        return;
-      done = true;
-      sock.destroy();
-      resolve(v);
-    };
-    sock.setTimeout(timeoutMs);
-    sock.once("connect", () => finish(Date.now() - start));
-    sock.once("timeout", () => finish(null));
-    sock.once("error", () => finish(null));
-    sock.connect(port, host);
-  });
-}
 function defaultDeps() {
   return {
     cpus: () => os2.cpus(),
@@ -150,7 +123,6 @@ function defaultDeps() {
     totalmem: () => os2.totalmem(),
     freemem: () => os2.freemem(),
     sh: async (cmd) => (await $`sh -c ${cmd}`.quiet()).stdout.toString(),
-    tcpProbe,
     sleep: (ms) => new Promise((r) => setTimeout(r, ms))
   };
 }
@@ -210,37 +182,6 @@ async function collectMem(d) {
 function shellQuote(s) {
   return "'" + s.replace(/'/g, "'\\''") + "'";
 }
-function parseEndpoint(ep) {
-  try {
-    const s = ep.includes("://") ? ep : "tcp://" + ep;
-    const u = new URL(s);
-    if (!u.hostname)
-      return null;
-    const port = u.port ? Number(u.port) : u.protocol === "https:" ? 443 : 80;
-    return { host: u.hostname, port };
-  } catch {
-    return null;
-  }
-}
-async function collectNet(d, config) {
-  try {
-    if (!config.vllmEndpoint)
-      return null;
-    const parsed = parseEndpoint(config.vllmEndpoint);
-    if (!parsed)
-      return null;
-    const endpoint = `${parsed.host}:${parsed.port}`;
-    let ms = null;
-    try {
-      ms = await d.tcpProbe(parsed.host, parsed.port, config.netTimeoutMs);
-    } catch {
-      ms = null;
-    }
-    return { endpoint, tcpConnectMs: ms, ok: ms !== null };
-  } catch {
-    return null;
-  }
-}
 async function collectDisk(d, cwd) {
   try {
     const out = await d.sh(`df -k ${shellQuote(cwd)}`);
@@ -258,18 +199,17 @@ async function collectDisk(d, cwd) {
 }
 async function collectSnapshot(config, cwd, deps) {
   const d = { ...defaultDeps(), ...deps };
-  const [cpu, mem, netInfo, disk] = await Promise.all([
+  const [cpu, mem, disk] = await Promise.all([
     collectCpu(d),
     collectMem(d),
-    collectNet(d, config),
     collectDisk(d, cwd)
   ]);
-  return { cpu, mem, net: netInfo, disk };
+  return { cpu, mem, disk };
 }
 
 // src/verdict.ts
 function computeVerdict(snapshot, config) {
-  const { cpu, mem, net: net2 } = snapshot;
+  const { cpu, mem } = snapshot;
   const localReasons = [];
   if (cpu && cpu.usagePct >= config.cpuHighPct) {
     localReasons.push(`cpu ${cpu.usagePct.toFixed(0)}% \u2265 ${config.cpuHighPct}%`);
@@ -283,17 +223,7 @@ function computeVerdict(snapshot, config) {
   if (localReasons.length > 0) {
     return { label: "LOCAL likely", reasons: localReasons };
   }
-  if (net2 && net2.ok === false) {
-    return { label: "NETWORK likely", reasons: ["vllm probe failed"] };
-  }
-  if (net2 && net2.tcpConnectMs !== null && net2.tcpConnectMs >= config.netHighMs) {
-    return { label: "NETWORK likely", reasons: [`net ${net2.tcpConnectMs.toFixed(0)}ms \u2265 ${config.netHighMs}ms`] };
-  }
-  const reasons = ["local resources nominal"];
-  if (net2 && net2.tcpConnectMs !== null) {
-    reasons.push(`net ${net2.tcpConnectMs.toFixed(0)}ms < ${config.netHighMs}ms`);
-  }
-  return { label: "BACKEND likely", reasons };
+  return { label: "BACKEND likely", reasons: ["local resources nominal"] };
 }
 
 // src/logger.ts
@@ -323,8 +253,6 @@ function formatWarning(event) {
     bits.push(`CPU ${s.cpu.usagePct.toFixed(0)}%`);
   if (s.mem)
     bits.push(`RAM ${s.mem.usedPct.toFixed(0)}%`);
-  if (s.net && s.net.tcpConnectMs !== null)
-    bits.push(`net ${s.net.tcpConnectMs.toFixed(0)}ms`);
   if (bits.length)
     parts.push("\xB7 " + bits.join(" "));
   parts.push(`\u2192 ${event.verdict.label}`);
@@ -344,13 +272,19 @@ var DEBUG = !!process.env.HWTRACK_DEBUG;
 var HwtrackPlugin = async ({ client, directory }) => {
   const cwd = directory ?? process.cwd();
   const config = loadConfig(process.env, readFileConfig(cwd));
-  console.error(`[hwtrack] loaded \u2014 cwd=${cwd} minTokensPerSec=${config.minTokensPerSec} ` + `ttftThresholdMs=${config.ttftThresholdMs} vllmEndpoint=${config.vllmEndpoint ?? "unset"} ` + `logPath=${config.logPath}`);
+  console.error(`[hwtrack] loaded \u2014 cwd=${cwd} minTokensPerSec=${config.minTokensPerSec} ` + `ttftThresholdMs=${config.ttftThresholdMs} logPath=${config.logPath}`);
   const showToast = async (msg) => {
     const c = client;
-    if (c.tui?.showToast) {
-      await c.tui.showToast({ body: { message: msg, variant: "warning", title: "hwtrack" } });
-    } else {
-      console.error("[hwtrack]", msg);
+    if (!c.tui?.showToast) {
+      console.error("[hwtrack] client.tui.showToast is unavailable \u2014 cannot show TUI toast; message was:", msg);
+      return;
+    }
+    try {
+      const res = await c.tui.showToast({ body: { message: msg, variant: "warning", title: "hwtrack" } });
+      if (DEBUG)
+        console.error("[hwtrack] toast sent; result:", JSON.stringify(res));
+    } catch (e) {
+      console.error("[hwtrack] toast call threw:", e);
     }
   };
   const handleTrigger = async (t) => {

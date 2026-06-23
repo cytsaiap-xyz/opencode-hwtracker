@@ -11,7 +11,6 @@ function ev(over: Partial<HwEvent> = {}): HwEvent {
     snapshot: {
       cpu: { usagePct: 12, load1: 1, load5: 1, load15: 1, cores: 8 },
       mem: null,
-      net: { endpoint: "h:8000", tcpConnectMs: 4, ok: true },
       disk: null,
     },
     verdict: { label: "BACKEND likely", reasons: [] },
@@ -19,11 +18,10 @@ function ev(over: Partial<HwEvent> = {}): HwEvent {
   }
 }
 
-test("formats a tok/s warning with cpu, net and verdict", () => {
+test("formats a tok/s warning with cpu and verdict", () => {
   const s = formatWarning(ev())
   expect(s).toContain("6.1 tok/s")
   expect(s).toContain("CPU 12%")
-  expect(s).toContain("net 4ms")
   expect(s).toContain("BACKEND likely")
 })
 
@@ -57,26 +55,11 @@ test("RAM branch with memory snapshot", () => {
       snapshot: {
         cpu: null,
         mem: { totalMB: 16000, usedMB: 8800, freeMB: 7200, usedPct: 55, swapUsedMB: 0 },
-        net: { endpoint: "h:8000", tcpConnectMs: 4, ok: true },
         disk: null,
       },
     }),
   )
   expect(s).toContain("RAM 55%")
-})
-
-test("null tcpConnectMs guard omits net segment", () => {
-  const s = formatWarning(
-    ev({
-      snapshot: {
-        cpu: null,
-        mem: null,
-        net: { endpoint: "h:8000", tcpConnectMs: null, ok: false },
-        disk: null,
-      },
-    }),
-  )
-  expect(s).not.toContain("net ")
 })
 
 test("verdict rendered with arrow at end", () => {
@@ -90,7 +73,6 @@ test("all-null snapshot yields clean string without stray separator", () => {
       snapshot: {
         cpu: null,
         mem: null,
-        net: null,
         disk: null,
       },
     }),

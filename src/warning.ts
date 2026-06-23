@@ -13,7 +13,6 @@ export function formatWarning(event: HwEvent): string {
   const bits: string[] = []
   if (s.cpu) bits.push(`CPU ${s.cpu.usagePct.toFixed(0)}%`)
   if (s.mem) bits.push(`RAM ${s.mem.usedPct.toFixed(0)}%`)
-  if (s.net && s.net.tcpConnectMs !== null) bits.push(`net ${s.net.tcpConnectMs.toFixed(0)}ms`)
   if (bits.length) parts.push("· " + bits.join(" "))
 
   parts.push(`→ ${event.verdict.label}`)

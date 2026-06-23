@@ -28,13 +28,12 @@ function deps(over: Partial<SnapshotDeps> = {}): Partial<SnapshotDeps> {
       if (cmd.includes("free")) return "              total        used        free\nSwap:          2048         512        1536"
       return ""
     },
-    tcpProbe: async () => 5,
     sleep: async () => {},
     ...over,
   }
 }
 
-const cfg: HwtrackConfig = { ...DEFAULTS, vllmEndpoint: "10.0.0.5:8000" }
+const cfg: HwtrackConfig = { ...DEFAULTS }
 
 test("collects cpu usage from two samples", async () => {
   const s = await collectSnapshot(cfg, "/", deps())
@@ -48,26 +47,6 @@ test("collects memory", async () => {
   const s = await collectSnapshot(cfg, "/", deps())
   expect(s.mem!.usedPct).toBeCloseTo(50, 0)
   expect(s.mem!.swapUsedMB).toBe(512)
-})
-
-test("collects net latency when endpoint configured", async () => {
-  const s = await collectSnapshot(cfg, "/", deps())
-  expect(s.net).toEqual({ endpoint: "10.0.0.5:8000", tcpConnectMs: 5, ok: true })
-})
-
-test("net is null when no endpoint configured", async () => {
-  const s = await collectSnapshot({ ...DEFAULTS, vllmEndpoint: null }, "/", deps())
-  expect(s.net).toBeNull()
-})
-
-test("net ok=false when probe fails", async () => {
-  const s = await collectSnapshot(cfg, "/", deps({ tcpProbe: async () => null }))
-  expect(s.net).toEqual({ endpoint: "10.0.0.5:8000", tcpConnectMs: null, ok: false })
-})
-
-test("net ok=false when probe throws", async () => {
-  const s = await collectSnapshot(cfg, "/", deps({ tcpProbe: async () => { throw new Error("boom") } }))
-  expect(s.net).toEqual({ endpoint: "10.0.0.5:8000", tcpConnectMs: null, ok: false })
 })
 
 test("collects disk free + used pct", async () => {

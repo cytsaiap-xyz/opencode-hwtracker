@@ -1,11 +1,8 @@
 {
-  "vllmEndpoint": "10.0.0.5:8000",
   "minTokensPerSec": 10,
   "ttftThresholdMs": 5000,
   "cpuHighPct": 85,
   "loadHighRatio": 1.0,
   "memHighPct": 90,
-  "netHighMs": 200,
-  "netTimeoutMs": 2000,
   "logPath": "~/.opencode-hwtrack/events.jsonl"
 }

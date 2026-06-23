@@ -19,23 +19,22 @@ export const HwtrackPlugin: Plugin = async ({ client, directory }) => {
   // Startup diagnostic: proves the plugin loaded and shows the resolved config.
   console.error(
     `[hwtrack] loaded — cwd=${cwd} minTokensPerSec=${config.minTokensPerSec} ` +
-      `ttftThresholdMs=${config.ttftThresholdMs} vllmEndpoint=${config.vllmEndpoint ?? "unset"} ` +
-      `logPath=${config.logPath}`,
+      `ttftThresholdMs=${config.ttftThresholdMs} logPath=${config.logPath}`,
   )
 
   const showToast = async (msg: string) => {
-    // SDK shape (verified against @opencode-ai/sdk): tui.showToast({ body: { message, variant, title } })
     const c = client as unknown as {
-      tui?: {
-        showToast?: (a: {
-          body: { message: string; variant?: string; title?: string }
-        }) => Promise<unknown>
-      }
+      tui?: { showToast?: (a: { body: { message: string; variant?: string; title?: string } }) => Promise<unknown> }
     }
-    if (c.tui?.showToast) {
-      await c.tui.showToast({ body: { message: msg, variant: "warning", title: "hwtrack" } })
-    } else {
-      console.error("[hwtrack]", msg)
+    if (!c.tui?.showToast) {
+      console.error("[hwtrack] client.tui.showToast is unavailable — cannot show TUI toast; message was:", msg)
+      return
+    }
+    try {
+      const res = await c.tui.showToast({ body: { message: msg, variant: "warning", title: "hwtrack" } })
+      if (DEBUG) console.error("[hwtrack] toast sent; result:", JSON.stringify(res))
+    } catch (e) {
+      console.error("[hwtrack] toast call threw:", e)
     }
   }
 
