@@ -31,23 +31,57 @@ opencode toasts auto-dismiss after a few seconds. If the turn completes very qui
 
 ## Install
 
-### Global (applies to all opencode projects)
+opencode loads local plugins from two directories:
+
+- `~/.config/opencode/plugins/` — **global** (all projects)
+- `.opencode/plugins/` — **per-project** (committed or local to one repo)
+
+The plugin has **no runtime dependencies** — it uses only the Bun runtime and Node
+built-ins, so there is nothing to build and no `npm install` step. Just place the
+repository in one of those directories.
+
+### Option A — Clone directly into the plugins directory (recommended)
+
+**Global:**
 
 ```bash
 mkdir -p ~/.config/opencode/plugins
-ln -s "$(pwd)" ~/.config/opencode/plugins/opencode-hwtracker
+git clone https://github.com/cytsaiap-xyz/opencode-hwtracker.git \
+  ~/.config/opencode/plugins/opencode-hwtracker
 ```
 
-### Per-project
+**Per-project:**
 
 ```bash
 mkdir -p .opencode/plugins
-ln -s /path/to/opencode-hwtracker .opencode/plugins/opencode-hwtracker
+git clone https://github.com/cytsaiap-xyz/opencode-hwtracker.git \
+  .opencode/plugins/opencode-hwtracker
+```
+
+### Option B — Clone once, symlink into place
+
+Handy if you want a single working copy you can `git pull` and reuse:
+
+```bash
+git clone https://github.com/cytsaiap-xyz/opencode-hwtracker.git
+mkdir -p ~/.config/opencode/plugins
+ln -s "$(pwd)/opencode-hwtracker" ~/.config/opencode/plugins/opencode-hwtracker
+```
+
+### Update / uninstall
+
+```bash
+# update
+git -C ~/.config/opencode/plugins/opencode-hwtracker pull
+# uninstall
+rm -rf ~/.config/opencode/plugins/opencode-hwtracker   # or remove the symlink
 ```
 
 ### Configure the endpoint
 
-Copy `hwtrack.config.example.json` to `hwtrack.config.json` in your project root (or wherever opencode is launched from) and set `vllmEndpoint` to your inference server's host:port:
+Copy `hwtrack.config.example.json` to `hwtrack.config.json` in your project root
+(or wherever opencode is launched from) and set `vllmEndpoint` to your inference
+server's `host:port`:
 
 ```json
 {
@@ -55,6 +89,27 @@ Copy `hwtrack.config.example.json` to `hwtrack.config.json` in your project root
   "minTokensPerSec": 10
 }
 ```
+
+Alternatively, set everything via environment variables (see the
+[Configuration](#configuration) table) — e.g. `HWTRACK_VLLM_ENDPOINT=10.0.0.5:8000`.
+
+### Confirm it loaded
+
+Restart opencode, then run any prompt. To force a trigger and confirm the plugin is
+active, temporarily set a very high threshold so every turn fires:
+
+```bash
+HWTRACK_MIN_TOKENS_PER_SEC=100000 opencode
+```
+
+You should see a bottom-right toast and a new line appended to
+`~/.opencode-hwtrack/events.jsonl`. Then remove the override. See
+[Install & verify](#install--verify-manual-integration-checklist) below for the full checklist.
+
+> **Note:** opencode discovers plugins by scanning the `plugins/` directories above.
+> If yours isn't picked up, confirm the clone landed at exactly
+> `~/.config/opencode/plugins/opencode-hwtracker/` (with `src/index.ts` inside) and
+> that you restarted opencode.
 
 ---
 
