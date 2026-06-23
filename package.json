@@ -9,7 +9,9 @@
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "build": "bun build ./src/index.ts --target bun --format esm --outfile dist/opencode-hwtracker.js"
+    "build": "bun run build:plugin && bun run build:watch",
+    "build:plugin": "bun build ./src/index.ts --target bun --format esm --outfile dist/opencode-hwtracker.js",
+    "build:watch": "bun build ./src/watch.ts --target bun --format esm --outfile dist/hwtracker-watch.js"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "latest",
