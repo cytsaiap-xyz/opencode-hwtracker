@@ -275,14 +275,19 @@ var HwtrackPlugin = async ({ client, directory }) => {
   console.error(`[hwtrack] loaded \u2014 cwd=${cwd} minTokensPerSec=${config.minTokensPerSec} ` + `ttftThresholdMs=${config.ttftThresholdMs} logPath=${config.logPath}`);
   const showToast = async (msg) => {
     const c = client;
-    if (!c.tui?.showToast) {
-      console.error("[hwtrack] client.tui.showToast is unavailable \u2014 cannot show TUI toast; message was:", msg);
+    if (typeof c.tui?.showToast !== "function") {
+      console.error("[hwtrack] client.tui.showToast is unavailable on this opencode version \u2014 cannot show TUI toast. message:", msg);
       return;
     }
     try {
-      const res = await c.tui.showToast({ body: { message: msg, variant: "warning", title: "hwtrack" } });
-      if (DEBUG)
-        console.error("[hwtrack] toast sent; result:", JSON.stringify(res));
+      const res = await c.tui.showToast({
+        body: { message: msg, variant: "warning", title: "hwtrack" }
+      });
+      if (res && res.error) {
+        console.error("[hwtrack] toast request returned an error:", JSON.stringify(res.error));
+      } else if (DEBUG) {
+        console.error("[hwtrack] toast sent OK:", JSON.stringify(res));
+      }
     } catch (e) {
       console.error("[hwtrack] toast call threw:", e);
     }

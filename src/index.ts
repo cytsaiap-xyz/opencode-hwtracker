@@ -24,15 +24,30 @@ export const HwtrackPlugin: Plugin = async ({ client, directory }) => {
 
   const showToast = async (msg: string) => {
     const c = client as unknown as {
-      tui?: { showToast?: (a: { body: { message: string; variant?: string; title?: string } }) => Promise<unknown> }
+      tui?: {
+        showToast?: (a: {
+          body: { message: string; variant?: string; title?: string }
+        }) => Promise<{ data?: unknown; error?: unknown } | unknown>
+      }
     }
-    if (!c.tui?.showToast) {
-      console.error("[hwtrack] client.tui.showToast is unavailable — cannot show TUI toast; message was:", msg)
+    if (typeof c.tui?.showToast !== "function") {
+      console.error(
+        "[hwtrack] client.tui.showToast is unavailable on this opencode version — cannot show TUI toast. message:",
+        msg,
+      )
       return
     }
     try {
-      const res = await c.tui.showToast({ body: { message: msg, variant: "warning", title: "hwtrack" } })
-      if (DEBUG) console.error("[hwtrack] toast sent; result:", JSON.stringify(res))
+      const res = (await c.tui.showToast({
+        body: { message: msg, variant: "warning", title: "hwtrack" },
+      })) as { error?: unknown } | undefined
+      // SDK client methods resolve with { data, error } and do NOT throw on HTTP errors,
+      // so surface a returned error explicitly (always, not just in DEBUG).
+      if (res && res.error) {
+        console.error("[hwtrack] toast request returned an error:", JSON.stringify(res.error))
+      } else if (DEBUG) {
+        console.error("[hwtrack] toast sent OK:", JSON.stringify(res))
+      }
     } catch (e) {
       console.error("[hwtrack] toast call threw:", e)
     }
