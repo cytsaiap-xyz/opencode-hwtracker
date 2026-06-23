@@ -28,6 +28,33 @@ opencode toasts auto-dismiss after a few seconds. If the turn completes very qui
 
 ---
 
+## Sidebar inside opencode (recommended)
+
+The TUI sidebar plugin renders **live CPU / RAM / disk** in opencode's right sidebar panel — always visible while you work, no separate terminal needed.
+
+### Install the sidebar
+
+```bash
+# From a cloned repo:
+./install-sidebar.sh
+
+# Or one-liner (clones automatically):
+curl -fsSL https://raw.githubusercontent.com/cytsaiap-xyz/opencode-hwtracker/master/install-sidebar.sh | bash
+```
+
+The script:
+1. Copies `src/` to `~/.config/opencode/plugins/opencode-hwtracker-sidebar-src/`
+2. Writes a loader entry `~/.config/opencode/plugins/opencode-hwtracker-sidebar.ts`
+3. Merges `plugins/tsconfig.json` with `jsxImportSource: "@opentui/solid"`
+4. Runs `bun add @opentui/solid solid-js @opencode-ai/sdk` in the plugins directory
+5. Registers `./plugins/opencode-hwtracker-sidebar.ts` in `~/.config/opencode/tui.json`
+
+**After install:** fully quit and relaunch opencode. Use a terminal wide enough to show the right sidebar — the "HW" panel appears immediately and refreshes every 3 seconds (configurable via `HWTRACK_WATCH_INTERVAL`).
+
+This sidebar complements the server plugin (below), which still does slow-turn detection and writes the JSONL log that the sidebar reads for the "last slow event" line. Install both for full functionality.
+
+---
+
 ## Install
 
 > **Important:** opencode loads a plugin as a **single `.js`/`.ts` file** placed
@@ -138,11 +165,12 @@ nothing appears. Remove the overrides when done.
 
 ---
 
-## Live panel (persistent display)
+## Live panel (separate terminal — alternative to the sidebar)
 
-The in-opencode toast is transient (opencode auto-dismisses toasts and the plugin API
-can't pin a custom sidebar). For an **always-on, never-disappearing** view, run the
-companion `hwtracker-watch` command in a terminal split beside opencode. It samples
+The [in-opencode sidebar](#sidebar-inside-opencode-recommended) above is the recommended
+persistent view. This `hwtracker-watch` command is an **alternative** for when you'd
+rather not widen the terminal for opencode's sidebar, or want the readout in its own
+pane/window. Run it in a terminal split beside opencode. It samples
 **CPU / RAM / disk every couple of seconds** and shows the latest slow-output event:
 
 ```

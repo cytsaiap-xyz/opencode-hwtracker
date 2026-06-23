@@ -6,7 +6,9 @@
     "strict": true,
     "skipLibCheck": true,
     "types": ["bun-types", "node"],
-    "noEmit": true
+    "noEmit": true,
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js"
   },
   "include": ["src"]
 }
