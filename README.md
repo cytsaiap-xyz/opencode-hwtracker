@@ -31,50 +31,61 @@ opencode toasts auto-dismiss after a few seconds. If the turn completes very qui
 
 ## Install
 
-opencode loads local plugins from two directories:
+> **Important:** opencode loads a plugin as a **single `.js`/`.ts` file** placed
+> directly in its plugins directory — it does **not** load a cloned repo folder.
+> So you install **one bundled file**, `dist/opencode-hwtracker.js` (no build, no
+> dependencies — it's pure Bun + Node built-ins).
 
+Plugin directories:
 - `~/.config/opencode/plugins/` — **global** (all projects)
-- `.opencode/plugins/` — **per-project** (committed or local to one repo)
+- `.opencode/plugins/` — **per-project**
 
-The plugin has **no runtime dependencies** — it uses only the Bun runtime and Node
-built-ins, so there is nothing to build and no `npm install` step. Just place the
-repository in one of those directories.
-
-### Option A — Clone directly into the plugins directory (recommended)
+### Option A — Download the prebuilt single file (recommended)
 
 **Global:**
 
 ```bash
 mkdir -p ~/.config/opencode/plugins
-git clone https://github.com/cytsaiap-xyz/opencode-hwtracker.git \
-  ~/.config/opencode/plugins/opencode-hwtracker
+curl -L https://raw.githubusercontent.com/cytsaiap-xyz/opencode-hwtracker/master/dist/opencode-hwtracker.js \
+  -o ~/.config/opencode/plugins/opencode-hwtracker.js
 ```
 
 **Per-project:**
 
 ```bash
 mkdir -p .opencode/plugins
-git clone https://github.com/cytsaiap-xyz/opencode-hwtracker.git \
-  .opencode/plugins/opencode-hwtracker
+curl -L https://raw.githubusercontent.com/cytsaiap-xyz/opencode-hwtracker/master/dist/opencode-hwtracker.js \
+  -o .opencode/plugins/opencode-hwtracker.js
 ```
 
-### Option B — Clone once, symlink into place
-
-Handy if you want a single working copy you can `git pull` and reuse:
+### Option B — Build from source
 
 ```bash
 git clone https://github.com/cytsaiap-xyz/opencode-hwtracker.git
-mkdir -p ~/.config/opencode/plugins
-ln -s "$(pwd)/opencode-hwtracker" ~/.config/opencode/plugins/opencode-hwtracker
+cd opencode-hwtracker
+bun install
+bun run build        # produces dist/opencode-hwtracker.js
+cp dist/opencode-hwtracker.js ~/.config/opencode/plugins/
 ```
+
+### Confirm it loaded (do this first!)
+
+Restart opencode. On startup the plugin prints a one-line diagnostic to **stderr**:
+
+```
+[hwtrack] loaded — cwd=/your/project minTokensPerSec=10 ttftThresholdMs=5000 vllmEndpoint=unset logPath=/Users/you/.opencode-hwtrack/events.jsonl
+```
+
+**If you see that line, the plugin loaded** — and it shows the exact config it
+resolved (handy for confirming your overrides took effect). If you do **not** see
+it, the file isn't in the plugins directory (or opencode wasn't restarted).
 
 ### Update / uninstall
 
 ```bash
-# update
-git -C ~/.config/opencode/plugins/opencode-hwtracker pull
-# uninstall
-rm -rf ~/.config/opencode/plugins/opencode-hwtracker   # or remove the symlink
+# update: re-download (Option A) or rebuild (Option B)
+# uninstall:
+rm ~/.config/opencode/plugins/opencode-hwtracker.js
 ```
 
 ### Configure the endpoint
@@ -93,23 +104,28 @@ server's `host:port`:
 Alternatively, set everything via environment variables (see the
 [Configuration](#configuration) table) — e.g. `HWTRACK_VLLM_ENDPOINT=10.0.0.5:8000`.
 
-### Confirm it loaded
+### Force a trigger (smoke test)
 
-Restart opencode, then run any prompt. To force a trigger and confirm the plugin is
-active, temporarily set a very high threshold so every turn fires:
+Because the plugin is silent on fast turns, force every turn to fire by setting a
+huge throughput threshold, and watch the log:
 
 ```bash
-HWTRACK_MIN_TOKENS_PER_SEC=100000 opencode
+# terminal A — watch the log
+touch ~/.opencode-hwtrack/events.jsonl && tail -f ~/.opencode-hwtrack/events.jsonl
+
+# terminal B — launch with a forced trigger, debug tracing, and your endpoint
+HWTRACK_DEBUG=1 HWTRACK_MIN_TOKENS_PER_SEC=100000 HWTRACK_VLLM_ENDPOINT=10.0.0.5:8000 opencode
 ```
 
-You should see a bottom-right toast and a new line appended to
-`~/.opencode-hwtrack/events.jsonl`. Then remove the override. See
-[Install & verify](#install--verify-manual-integration-checklist) below for the full checklist.
+Send any prompt. You should see a bottom-right toast **and** a new JSON line in
+terminal A. With `HWTRACK_DEBUG=1`, the plugin also logs each `message.updated` /
+`message.part.updated` event and every `trigger fired` to stderr — useful if
+nothing appears. Remove the overrides when done.
 
-> **Note:** opencode discovers plugins by scanning the `plugins/` directories above.
-> If yours isn't picked up, confirm the clone landed at exactly
-> `~/.config/opencode/plugins/opencode-hwtracker/` (with `src/index.ts` inside) and
-> that you restarted opencode.
+> **Not working?** First check the `[hwtrack] loaded …` startup line (above). No
+> line → the file isn't at `~/.config/opencode/plugins/opencode-hwtracker.js`, or
+> opencode wasn't restarted. Line present but no trigger → run with `HWTRACK_DEBUG=1`
+> and see [Install & verify](#install--verify-manual-integration-checklist).
 
 ---
 

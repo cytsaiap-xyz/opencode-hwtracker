@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "bun build ./src/index.ts --target bun --format esm --outfile dist/opencode-hwtracker.js"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "latest",

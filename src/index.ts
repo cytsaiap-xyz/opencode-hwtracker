@@ -10,17 +10,30 @@ import type { HwEvent, Trigger } from "./types"
 
 let sessionIdMissingWarned = false
 
+const DEBUG = !!process.env.HWTRACK_DEBUG
+
 export const HwtrackPlugin: Plugin = async ({ client, directory }) => {
   const cwd = directory ?? process.cwd()
   const config = loadConfig(process.env as Record<string, string | undefined>, readFileConfig(cwd))
 
+  // Startup diagnostic: proves the plugin loaded and shows the resolved config.
+  console.error(
+    `[hwtrack] loaded — cwd=${cwd} minTokensPerSec=${config.minTokensPerSec} ` +
+      `ttftThresholdMs=${config.ttftThresholdMs} vllmEndpoint=${config.vllmEndpoint ?? "unset"} ` +
+      `logPath=${config.logPath}`,
+  )
+
   const showToast = async (msg: string) => {
-    // Confirm the exact SDK method against a live session (Step 7).
+    // SDK shape (verified against @opencode-ai/sdk): tui.showToast({ body: { message, variant, title } })
     const c = client as unknown as {
-      tui?: { showToast?: (a: unknown) => Promise<unknown> }
+      tui?: {
+        showToast?: (a: {
+          body: { message: string; variant?: string; title?: string }
+        }) => Promise<unknown>
+      }
     }
     if (c.tui?.showToast) {
-      await c.tui.showToast({ body: msg, variant: "warning", title: "hwtrack" })
+      await c.tui.showToast({ body: { message: msg, variant: "warning", title: "hwtrack" } })
     } else {
       console.error("[hwtrack]", msg)
     }
@@ -45,6 +58,7 @@ export const HwtrackPlugin: Plugin = async ({ client, directory }) => {
     minTokensPerSec: config.minTokensPerSec,
     ttftThresholdMs: config.ttftThresholdMs,
     onTrigger: (t) => {
+      if (DEBUG) console.error("[hwtrack] trigger fired:", JSON.stringify(t))
       handleTrigger(t).catch((e) => console.error("[hwtrack] handleTrigger:", e))
     },
   })
@@ -54,6 +68,10 @@ export const HwtrackPlugin: Plugin = async ({ client, directory }) => {
       try {
         const type = event?.type
         const props = (event?.properties ?? {}) as Record<string, unknown>
+
+        if (DEBUG && (type === "message.updated" || type === "message.part.updated")) {
+          console.error("[hwtrack] event:", type)
+        }
 
         if (type === "message.updated") {
           const msg = (props.info ?? props.message ?? props) as Record<string, unknown>
