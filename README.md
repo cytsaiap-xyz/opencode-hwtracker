@@ -30,7 +30,10 @@ opencode toasts auto-dismiss after a few seconds. If the turn completes very qui
 
 ## Sidebar inside opencode (recommended)
 
-The TUI sidebar plugin renders **live CPU / RAM / disk** in opencode's right sidebar panel — always visible while you work, no separate terminal needed.
+The TUI sidebar plugin shows **CPU / RAM / disk** in opencode's right sidebar panel —
+no separate terminal needed. It is **event-driven**: it displays the hardware snapshot
+recorded when a slow-output event fires and updates only then, so it adds **no
+continuous overhead** (it does not poll/sample hardware in the background).
 
 ### Install the sidebar
 
@@ -49,7 +52,7 @@ The script:
 4. Runs `bun add @opentui/solid solid-js @opencode-ai/sdk` in the plugins directory
 5. Registers `./plugins/opencode-hwtracker-sidebar.ts` in `~/.config/opencode/tui.json`
 
-**After install:** fully quit and relaunch opencode. Use a terminal wide enough to show the right sidebar — the "HW" panel appears immediately and refreshes every 3 seconds (configurable via `HWTRACK_WATCH_INTERVAL`).
+**After install:** fully quit and relaunch opencode. Use a terminal wide enough to show the right sidebar — the "HW" panel appears (showing "no slow-output events yet" until one fires) and updates **only when a slow turn is detected**, displaying the snapshot captured at that moment.
 
 This sidebar complements the server plugin (below), which still does slow-turn detection and writes the JSONL log that the sidebar reads for the "last slow event" line. Install both for full functionality.
 
