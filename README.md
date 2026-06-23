@@ -118,10 +118,23 @@ terminal A. With `HWTRACK_DEBUG=1`, the plugin also logs each `message.updated` 
 `message.part.updated` event and every `trigger fired` to stderr — useful if
 nothing appears. Remove the overrides when done.
 
-> **Not working?** First check the `[hwtrack] loaded …` startup line (above). No
-> line → the file isn't at `~/.config/opencode/plugins/opencode-hwtracker.js`, or
-> opencode wasn't restarted. Line present but no trigger → run with `HWTRACK_DEBUG=1`
-> and see [Install & verify](#install--verify-manual-integration-checklist).
+> **Where the `[hwtrack] …` lines appear:** plugin `console` output goes to
+> opencode's **log files**, not the TUI screen. View them with either:
+> ```bash
+> opencode --print-logs                      # stream logs in the terminal, or
+> tail -f ~/.local/share/opencode/log/*.log | grep hwtrack
+> ```
+>
+> **Not working?** Two reliable signals that don't depend on the TUI:
+> 1. **Startup line** — `grep hwtrack` the log for `[hwtrack] loaded …`. Missing →
+>    the file isn't at `~/.config/opencode/plugins/opencode-hwtracker.js`, or opencode
+>    wasn't restarted.
+> 2. **The JSONL file** — `~/.opencode-hwtrack/events.jsonl` gets a line on every
+>    trigger, regardless of whether the toast shows. Lines appearing but no toast →
+>    a TUI-toast display issue, not a plugin failure (the data is still recorded).
+>
+> Line present but no JSONL on a forced trigger → run with `HWTRACK_DEBUG=1` to trace
+> events, and see [Install & verify](#install--verify-manual-integration-checklist).
 
 ---
 
