@@ -1,4 +1,4 @@
-# opencode-hwtrack
+# opencode-hwtracker
 
 An [opencode](https://opencode.ai) plugin that records local server hardware metrics whenever the model output is unexpectedly slow, then surfaces a verdict explaining whether the bottleneck is likely **LOCAL** (CPU/RAM on the inference box), **NETWORK** (latency to the vLLM endpoint), or **BACKEND** (the vLLM process itself is saturated/underprovisioned).
 
@@ -35,14 +35,14 @@ opencode toasts auto-dismiss after a few seconds. If the turn completes very qui
 
 ```bash
 mkdir -p ~/.config/opencode/plugins
-ln -s "$(pwd)" ~/.config/opencode/plugins/opencode-hwtrack
+ln -s "$(pwd)" ~/.config/opencode/plugins/opencode-hwtracker
 ```
 
 ### Per-project
 
 ```bash
 mkdir -p .opencode/plugins
-ln -s /path/to/opencode-hwtrack .opencode/plugins/opencode-hwtrack
+ln -s /path/to/opencode-hwtracker .opencode/plugins/opencode-hwtracker
 ```
 
 ### Configure the endpoint

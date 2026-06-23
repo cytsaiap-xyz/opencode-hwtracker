@@ -1,5 +1,5 @@
 {
-  "name": "opencode-hwtrack",
+  "name": "opencode-hwtracker",
   "version": "0.1.0",
   "description": "opencode plugin: records local server hardware when model output is slow",
   "type": "module",
